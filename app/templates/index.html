@@ -11,27 +11,68 @@
     <div class="container">
         <!-- Header -->
         <header class="header">
-            <h1>Real-Time News &amp; Events Monitoring</h1>
-            <p class="subtitle">Utility Disruption Events Across India</p>
+            <div class="header-top">
+                <h1>Utility Events Monitoring Dashboard</h1>
+                <div class="header-actions">
+                    <label class="theme-toggle" for="theme-select">
+                        Theme
+                        <select id="theme-select" aria-label="Choose theme">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </label>
+                    <span class="system-pill">System Online</span>
+                </div>
+            </div>
+            <p class="subtitle">Real-Time News-Based Incident Tracking</p>
         </header>
 
         <!-- Stats Section -->
         <section class="stats-section">
-            <div class="stat-card">
-                <h3>Total Events</h3>
-                <p class="stat-number" id="total-events">0</p>
-            </div>
-            <div class="stat-card">
-                <h3>Power Outages</h3>
+            <div class="stat-card stat-power">
+                <div class="stat-top">
+                    <h3>Power Outages</h3>
+                    <span class="stat-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" class="icon-svg">
+                            <path d="M13 2L6 13h5l-1 9 8-12h-5l0-8z"></path>
+                        </svg>
+                    </span>
+                </div>
                 <p class="stat-number" id="power-outage-count">0</p>
+                <p class="stat-change change-flat" id="power-outage-change">
+                    <span class="change-value">0%</span>
+                    <span class="change-label">vs last hour</span>
+                </p>
             </div>
-            <div class="stat-card">
-                <h3>Water Issues</h3>
+            <div class="stat-card stat-water">
+                <div class="stat-top">
+                    <h3>Water Issues</h3>
+                    <span class="stat-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" class="icon-svg">
+                            <path d="M12 3c-2.8 3.6-6 6.9-6 10.1a6 6 0 0 0 12 0C18 9.9 14.8 6.6 12 3z"></path>
+                        </svg>
+                    </span>
+                </div>
                 <p class="stat-number" id="water-issue-count">0</p>
+                <p class="stat-change change-flat" id="water-issue-change">
+                    <span class="change-value">0%</span>
+                    <span class="change-label">vs last hour</span>
+                </p>
             </div>
-            <div class="stat-card">
-                <h3>Logistics Delays</h3>
+            <div class="stat-card stat-logistics">
+                <div class="stat-top">
+                    <h3>Logistics Delays</h3>
+                    <span class="stat-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" class="icon-svg">
+                            <path d="M3 7h11v8H3zM14 10h4l3 3v2h-7zM7 18a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm11 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3z"></path>
+                        </svg>
+                    </span>
+                </div>
                 <p class="stat-number" id="logistics-delay-count">0</p>
+                <p class="stat-change change-flat" id="logistics-delay-change">
+                    <span class="change-value">0%</span>
+                    <span class="change-label">vs last hour</span>
+                </p>
             </div>
         </section>
 
@@ -142,6 +183,31 @@
             return classMap[category] || '';
         }
 
+        /**
+         * Apply and persist selected theme
+         */
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('dashboard-theme', theme);
+            const select = document.getElementById('theme-select');
+            if (select) select.value = theme;
+        }
+
+        /**
+         * Initialize theme from local storage or OS preference
+         */
+        function initTheme() {
+            const saved = localStorage.getItem('dashboard-theme');
+            if (saved === 'light' || saved === 'dark') {
+                applyTheme(saved);
+                return;
+            }
+
+            const prefersDark = window.matchMedia &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(prefersDark ? 'dark' : 'light');
+        }
+
         // ====================================================================
         // API CALLS
         // ====================================================================
@@ -171,20 +237,6 @@
         }
 
         /**
-         * Fetch statistics from backend
-         */
-        async function fetchStats() {
-            try {
-                const response = await fetch(`${API_BASE_URL}/stats`);
-                const stats = await response.json();
-                return stats;
-            } catch (error) {
-                console.error('Error fetching stats:', error);
-                return {};
-            }
-        }
-
-        /**
          * Fetch cities from backend
          */
         async function fetchCities() {
@@ -205,18 +257,86 @@
         /**
          * Update statistics display
          */
-        function updateStats(stats) {
-            document.getElementById('power-outage-count').textContent =
-                stats.power_outage || 0;
-            document.getElementById('water-issue-count').textContent =
-                stats.water_issue || 0;
-            document.getElementById('logistics-delay-count').textContent =
-                stats.logistics_delay || 0;
+        function parseEventTime(dateString) {
+            const time = new Date(dateString).getTime();
+            return Number.isNaN(time) ? null : time;
+        }
 
-            const total = (stats.power_outage || 0) +
-                         (stats.water_issue || 0) +
-                         (stats.logistics_delay || 0);
-            document.getElementById('total-events').textContent = total;
+        /**
+         * Compute percentage change for current hour vs previous hour
+         */
+        function computeHourlyChange(events, category) {
+            const now = Date.now();
+            const oneHour = 60 * 60 * 1000;
+            let current = 0;
+            let previous = 0;
+
+            events.forEach(event => {
+                if (event.category !== category) return;
+                const ts = parseEventTime(event.date);
+                if (!ts) return;
+
+                const age = now - ts;
+                if (age >= 0 && age < oneHour) {
+                    current += 1;
+                } else if (age >= oneHour && age < oneHour * 2) {
+                    previous += 1;
+                }
+            });
+
+            let change = 0;
+            if (previous === 0 && current > 0) {
+                change = 100;
+            } else if (previous > 0) {
+                change = ((current - previous) / previous) * 100;
+            }
+
+            return Math.round(change);
+        }
+
+        /**
+         * Apply change style and text to a card
+         */
+        function updateChangeBadge(elementId, value) {
+            const el = document.getElementById(elementId);
+            const valueEl = el.querySelector('.change-value');
+
+            el.classList.remove('change-up', 'change-down', 'change-flat');
+            if (value > 0) {
+                el.classList.add('change-up');
+                valueEl.textContent = `+${value}%`;
+            } else if (value < 0) {
+                el.classList.add('change-down');
+                valueEl.textContent = `${value}%`;
+            } else {
+                el.classList.add('change-flat');
+                valueEl.textContent = '0%';
+            }
+        }
+
+        /**
+         * Update statistics display
+         */
+        function updateStats(events) {
+            const counts = {
+                power_outage: 0,
+                water_issue: 0,
+                logistics_delay: 0
+            };
+
+            events.forEach(event => {
+                if (counts[event.category] !== undefined) {
+                    counts[event.category] += 1;
+                }
+            });
+
+            document.getElementById('power-outage-count').textContent = counts.power_outage;
+            document.getElementById('water-issue-count').textContent = counts.water_issue;
+            document.getElementById('logistics-delay-count').textContent = counts.logistics_delay;
+
+            updateChangeBadge('power-outage-change', computeHourlyChange(events, 'power_outage'));
+            updateChangeBadge('water-issue-change', computeHourlyChange(events, 'water_issue'));
+            updateChangeBadge('logistics-delay-change', computeHourlyChange(events, 'logistics_delay'));
         }
 
         /**
@@ -284,15 +404,14 @@
                 '<tr><td data-label="Status" colspan="5" class="loading">Loading events...</td></tr>';
 
             // Fetch all data in parallel
-            const [events, stats, cities] = await Promise.all([
+            const [events, cities] = await Promise.all([
                 fetchEvents(cityFilter, categoryFilter),
-                fetchStats(),
                 fetchCities()
             ]);
 
             // Update UI
             allEvents = events;
-            updateStats(stats);
+            updateStats(events);
             populateCityFilter(cities);
             renderEvents(events);
         }
@@ -304,13 +423,19 @@
         document.getElementById('city-filter').addEventListener('change', loadData);
         document.getElementById('category-filter').addEventListener('change', loadData);
         document.getElementById('refresh-btn').addEventListener('click', loadData);
+        document.getElementById('theme-select').addEventListener('change', (event) => {
+            applyTheme(event.target.value);
+        });
 
         // ====================================================================
         // INITIALIZATION
         // ====================================================================
 
         // Load data on page load
-        window.addEventListener('DOMContentLoaded', loadData);
+        window.addEventListener('DOMContentLoaded', () => {
+            initTheme();
+            loadData();
+        });
     </script>
 </body>
 </html>
