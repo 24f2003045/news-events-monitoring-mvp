@@ -1,0 +1,11 @@
+# Real-Time News & Events Monitoring System - Dependencies
+# =========================================================
+
+# Web Framework
+fastapi==0.109.0          # Modern, fast web framework for building APIs
+uvicorn[standard]==0.27.0 # ASGI server for running FastAPI
+
+# RSS Feed Parsing
+feedparser==6.0.10        # Parse RSS/Atom feeds from Google News
+
+# Note: SQLite is included in Python standard library (no external dependency needed)

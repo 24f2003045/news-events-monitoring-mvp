@@ -1,0 +1,44 @@
+# Real-Time News & Events Monitoring System
+# Docker Compose Configuration
+# ============================================
+# Optional containerized deployment for production environments
+
+version: '3.8'
+
+services:
+  # FastAPI Backend Service
+  api:
+    # Use official Python image
+    image: python:3.10-slim
+    
+    # Container name
+    container_name: news-events-api
+    
+    # Working directory inside container
+    working_dir: /app
+    
+    # Mount local directory as volume
+    volumes:
+      - .:/app
+    
+    # Expose port 8000
+    ports:
+      - "8000:8000"
+    
+    # Install dependencies and run server
+    command: >
+      sh -c "pip install --no-cache-dir -r requirements.txt &&
+             python -c 'import sqlite3; conn = sqlite3.connect(\"db/events.db\"); conn.executescript(open(\"db/schema.sql\").read()); conn.close()' &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    
+    # Environment variables
+    environment:
+      - PYTHONUNBUFFERED=1
+    
+    # Restart policy
+    restart: unless-stopped
+
+# To use:
+# 1. docker-compose up -d      (start in background)
+# 2. docker-compose logs -f    (view logs)
+# 3. docker-compose down       (stop)
