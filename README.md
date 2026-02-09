@@ -964,50 +964,6 @@ python ingestion/ingest_news.py
 
 ---
 
-## 🎬 Demo Instructions
-
-### 3-Minute Demo Flow
-
-Perfect for demonstrating the system in an interview or presentation:
-
-**1. Initialize Database** (5 seconds)
-```bash
-python -c "import sqlite3; conn = sqlite3.connect('db/events.db'); conn.executescript(open('db/schema.sql').read()); conn.close()"
-```
-
-**2. Run Ingestion** (30 seconds)
-```bash
-python ingestion/ingest_news.py
-```
-Show the output: articles being fetched and classified.
-
-**3. Start Backend** (5 seconds - in new terminal)
-```bash
-uvicorn app.main:app --reload
-```
-
-**4. Open Dashboard** (5 seconds)
-Navigate to `http://localhost:8000` in browser.
-
-**5. Demonstrate Features** (90 seconds)
-- Show statistics cards (total events, breakdown by category)
-- Filter by city (e.g., select "Delhi")
-- Filter by category (e.g., "Power Outage")
-- Click "View" link to show original news source
-- Click "Refresh Data" button
-
-**6. Show API** (30 seconds)
-- Navigate to `http://localhost:8000/docs`
-- Try `/events` endpoint with filters
-- Show `/stats` endpoint
-
-**7. Demonstrate Duplicate Prevention** (15 seconds)
-```bash
-python ingestion/ingest_news.py
-```
-Show that duplicate count increases but no new events added.
-
----
 
 ## 📁 Project Structure
 
@@ -1168,3 +1124,4 @@ After deploy, your app will be available at:
 Vercel serverless filesystem is read-only at runtime and ephemeral between deployments.
 This app can **read** the bundled `db/events.db` file, but runtime writes/persistent updates are not reliable on Vercel.
 If you need live ingestion in production, move to a managed database (for example: Neon/Postgres, Supabase, or PlanetScale/MySQL).
+
